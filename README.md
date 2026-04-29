@@ -1,123 +1,87 @@
-# 🤖 Autonomous Corridor Navigation Robot
+# Autonomous Corridor Navigation Robot
 
-An embedded systems project built on the **Mbed platform** that enables a robot to autonomously navigate through corridors using a combination of ToF, ultrasonic, and IMU sensors with a Finite State Machine (FSM) control logic.
+This project is an embedded system built on the Mbed platform. It lets a small robot navigate corridors autonomously using three sensors (left and right ultrasonic sensors, and a front Time-of-Flight sensor) and a simple finite state machine (FSM) to decide steering and motor behavior.
 
----
+Overview
 
-## 📋 Description
+The robot reads distances from three sensors and converts those readings into a small set of discrete states. The FSM uses those states to decide whether to drive forward, slow down, reverse, or steer left/right. The code is intended to be compact and easy to tune.
 
-This robot uses three sensors to detect obstacles:
-- **Left & Right** — HC-SR04 Ultrasonic sensors
-- **Front** — VL53L0X Time-of-Flight (ToF) sensor
+Hardware
 
-Based on sensor readings, an FSM decides the steering direction and motor speed in real time, allowing the robot to avoid walls and navigate corridors without human input.
+Component | Notes
+--- | ---
+Mbed-compatible MCU | Any supported board (for example, an STM32 Nucleo)
+VL53L0X | Front-facing ToF distance sensor
+MPU6050 | IMU used for yaw measurements (not required for basic FSM)
+HC-SR04 (x2) | Left and right ultrasonic sensors
+Steering servo | Controls steering angle
+DC motors | One for forward drive and one for reverse/brake (controlled via PWM)
 
----
+Pin connections
 
-## 🛠️ Hardware Components
+Pin | Function
+--- | ---
+D14, D15 | I2C (SDA, SCL) for VL53L0X and MPU6050
+D2 | Left ultrasonic TRIG
+D3 | Left ultrasonic ECHO
+D7 | Right ultrasonic TRIG
+D8 | Right ultrasonic ECHO
+A3 | Steering servo PWM
+D6 | Forward motor PWM
+D5 | Reverse motor PWM
 
-| Component | Description |
-|---|---|
-| Mbed-compatible MCU | Main microcontroller (e.g. STM32 Nucleo) |
-| VL53L0X | Front-facing Time-of-Flight distance sensor |
-| MPU6050 | IMU for yaw angle tracking |
-| HC-SR04 (x2) | Left and right ultrasonic sensors |
-| Servo Motor | Steering control |
-| DC Motor (x2) | Forward and reverse drive |
+How it works
 
----
+The code reads the three sensors each loop and converts the numeric distances to three binary variables:
+- A: left ultrasonic indicates an obstacle if distance &lt; 300 mm
+- B: front ToF indicates an obstacle if distance &lt; 250 mm
+- C: right ultrasonic indicates an obstacle if distance &lt; 300 mm
 
-## 📌 Pin Connections
+These three bits are combined into a single command value: cmd = A + 2*B + 4*C. The command (0 to 7) selects one of eight FSM states which set steering and motor outputs.
 
-| Pin | Connected To |
-|---|---|
-| D14, D15 | I2C SDA/SCL (VL53L0X + MPU6050) |
-| D2 | Ultrasonic Left TRIG |
-| D3 | Ultrasonic Left ECHO |
-| D7 | Ultrasonic Right TRIG |
-| D8 | Ultrasonic Right ECHO |
-| A3 | Steering Servo PWM |
-| D6 | Forward Motor PWM |
-| D5 | Reverse Motor PWM |
+FSM summary
 
----
+CMD | Left (A) | Front (B) | Right (C) | Action
+--- | --- | --- | --- | ---
+0 | clear | clear | clear | Drive straight fast
+1 | blocked | clear | clear | Steer half right, drive fast
+2 | clear | blocked | clear | Steer half left, reverse
+3 | blocked | blocked | clear | Steer full left, reverse
+4 | clear | clear | blocked | Steer half left, drive fast
+5 | blocked | clear | blocked | Stay straight, drive slow
+6 | clear | blocked | blocked | Steer full right, reverse
+7 | blocked | blocked | blocked | Steer half left, reverse
 
-## 🧠 How It Works
+Files
 
-The robot continuously reads all three sensors and converts them into binary states:
+- main.cpp — firmware source (this repository contains main.cpp)
+- README.md — project documentation
+- .gitignore — ignore build artifacts
 
-| Variable | Sensor | Threshold | Meaning |
-|---|---|---|---|
-| A | Left ultrasonic | < 300 mm | Left is blocked |
-| B | Front ToF | < 250 mm | Front is blocked |
-| C | Right ultrasonic | < 300 mm | Right is blocked |
+Building and flashing
 
-These three binary values are encoded into a single command (`cmd = A + 2B + 4C`) and fed into an FSM with 8 possible states.
+1. Open Mbed Studio or the Mbed Online Compiler and create a new project for your target board.
+2. Add the VL53L0X and MPU6050 libraries (if you use the IMU).
+3. Copy main.cpp into the project and build.
+4. Flash the binary to your board.
 
----
+Notes on sensors and tuning
 
-## 📊 FSM State Table
+- Ultrasonic distance: the code uses pulse_us / 5.8 to estimate distance in millimeters. That factor was chosen to match test results but may need calibration for your hardware and clock settings.
+- Front ToF: readings are smoothed with a simple exponential moving average (filtered = 0.7*previous + 0.3*new). You can change the smoothing weights to make the response faster or more stable.
+- The thresholds (300 mm for side sensors, 250 mm for front) are starting points. If your robot is larger or faster, reduce the thresholds or add hysteresis to avoid oscillation.
 
-| CMD | A (Left) | B (Front) | C (Right) | Steering | Drive |
-|---|---|---|---|---|---|
-| 0 | Clear | Clear | Clear | Straight | Fast |
-| 1 | Blocked | Clear | Clear | Half Right | Fast |
-| 2 | Clear | Blocked | Clear | Half Left | Reverse |
-| 3 | Blocked | Blocked | Clear | Full Left | Reverse |
-| 4 | Clear | Clear | Blocked | Half Left | Fast |
-| 5 | Blocked | Clear | Blocked | Straight | Slow |
-| 6 | Clear | Blocked | Blocked | Full Right | Reverse |
-| 7 | Blocked | Blocked | Blocked | Half Left | Reverse |
+Future improvements
 
----
+- Use the IMU yaw to correct and maintain heading using a PID controller.
+- Add rate-limited acceleration and deceleration to make motion smoother.
+- Log sensor data over serial for debugging and offline analysis.
+- Add support for mapping or higher-level navigation.
 
-## 📂 File Structure
+License
 
-```
-autonomous-corridor-navigation-robot/
-│
-└── autonomous-corridor-navigation-robot.cpp    # Main source code
-└── README.md                                   # Project documentation
-```
+This project is provided under the MIT License.
 
----
+Author
 
-## ⚙️ How to Build & Flash
-
-1. Open [Mbed Studio](https://os.mbed.com/studio/) or the [Mbed Online Compiler](https://ide.mbed.com/)
-2. Create a new project and select your target board
-3. Import the following libraries:
-   - `VL53L0X`
-   - `MPU6050`
-4. Copy the contents of `autonomous-corridor-navigation-robot.cpp` into `main.cpp`
-5. Click **Build** then **Flash** to upload to your board
-
----
-
-## 📐 Sensor Calibration Notes
-
-- Ultrasonic distance formula: `pulse_us / 5.8 = distance in mm`
-- ToF uses **Exponential Moving Average (EMA)** smoothing:  
-  `filtered = (0.7 × previous) + (0.3 × new_reading)`
-- IMU yaw angle is read but reserved for future use
-
----
-
-## 🚀 Future Improvements
-
-- [ ] Use IMU yaw to drive in a straight line (PID correction)
-- [ ] Add speed ramping for smoother acceleration
-- [ ] Implement a mapping/logging system over serial
-- [ ] Add Bluetooth remote override
-
----
-
-## 📜 License
-
-This project is licensed under the **MIT License** — free to use, modify, and distribute.
-
----
-
-## 👤 Author
-
-**Mohamed** — [@mohamedd12345](https://github.com/mohamedd12345)
+Mohamed (GitHub: mohamedd12345)
