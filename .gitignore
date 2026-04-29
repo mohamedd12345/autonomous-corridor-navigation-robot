@@ -1,0 +1,30 @@
+# Mbed build artifacts
+BUILD/
+.mbed
+.vscode/
+.project
+.cproject
+.settings/
+
+# IDE
+*.swp
+*.swo
+*~
+.DS_Store
+.idea/
+*.iml
+
+# Compiler
+*.o
+*.a
+*.elf
+*.bin
+*.hex
+
+# Dependencies
+mbed_settings.py
+.mbedignore
+
+# OS specific
+Thumbs.db
+.DS_Store
