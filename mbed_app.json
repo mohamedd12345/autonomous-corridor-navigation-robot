@@ -1,0 +1,15 @@
+{
+    "name": "autonomous-corridor-navigation-robot",
+    "config": {
+        "loop_rate": {
+            "help": "Main control loop rate in milliseconds",
+            "value": 50
+        }
+    },
+    "target_overrides": {
+        "*": {
+            "target.features_add": ["NANOSTACK", "LOWPAN_BORDER_ROUTER", "COMMON_PAL"],
+            "target.network-default-interface-type": "ETHERNET"
+        }
+    }
+}
